@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Отзыв об обучении</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: var(--tg-theme-bg-color, #18222d);
+      --secondary-bg: var(--tg-theme-secondary-bg-color, #22303f);
+      --text-color: var(--tg-theme-text-color, #ffffff);
+      --hint-color: var(--tg-theme-hint-color, #8fa1b3);
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Прогресс-бар сверху */
+    .progress-header {
+      margin-bottom: 24px;
+    }
+    .step-indicator {
+      font-size: 13px;
+      color: var(--hint-color);
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: var(--secondary-bg);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 25%;
+      background: var(--accent);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+
+    /* Контейнер шагов */
+    .step-container {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.25s ease;
+    }
+    .step-container.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .question-title {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .question-subtitle {
+      font-size: 14px;
+      color: var(--hint-color);
+      margin-top: -8px;
+      margin-bottom: 8px;
+    }
+
+    /* Шаг 1: Шкала оценок от 1 до 5 */
+    .rating-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .rating-btn {
+      background: var(--secondary-bg);
+      border: 2px solid transparent;
+      border-radius: 14px;
+      padding: 14px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--text-color);
+      transition: 0.2s;
+    }
+    .rating-btn.selected {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.15);
+    }
+    .rating-emoji { font-size: 26px; }
+    .rating-num { font-size: 14px; font-weight: 700; }
+
+    /* Шаг 2 и 3: Карточки выбора и теги */
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .option-card {
+      background: var(--secondary-bg);
+      border: 2px solid transparent;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 500;
+      text-align: left;
+      color: var(--text-color);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .option-card.selected {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.15);
+      font-weight: 600;
+    }
+
+    .tags-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .tag-pill {
+      background: var(--secondary-bg);
+      border: 2px solid transparent;
+      border-radius: 20px;
+      padding: 10px 16px;
+      font-size: 14px;
+      color: var(--text-color);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .tag-pill.selected {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.15);
+      font-weight: 600;
+    }
+
+    /* Шаг 4: Текстовое поле */
+    textarea {
+      width: 100%;
+      height: 130px;
+      background: var(--secondary-bg);
+      border: 2px solid transparent;
+      border-radius: 14px;
+      padding: 14px;
+      color: var(--text-color);
+      font-size: 15px;
+      resize: none;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    /* Нижняя навигация */
+    .nav-footer {
+      margin-top: auto;
+      padding-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-back {
+      background: var(--secondary-bg);
+      color: var(--text-color);
+      border: none;
+      border-radius: 14px;
+      padding: 0 18px;
+      height: 50px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-next {
+      flex: 1;
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      height: 50px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-next:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Прогресс-бар -->
+  <div class="progress-header">
+    <div class="step-indicator">
+      <span id="stepText">Вопрос 1 из 4</span>
+      <span id="stepPercent">25%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- ВОПРОС 1: Общая оценка -->
+  <div class="step-container active" id="step1">
+    <div class="question-title">Как тебе прошедший модуль / обучение?</div>
+    <div class="question-subtitle">Оцени по шкале от 1 до 5</div>
+    <div class="rating-grid">
+      <button class="rating-btn" onclick="setRating(1, this)">
+        <span class="rating-emoji">😡</span><span class="rating-num">1</span>
+      </button>
+      <button class="rating-btn" onclick="setRating(2, this)">
+        <span class="rating-emoji">😕</span><span class="rating-num">2</span>
+      </button>
+      <button class="rating-btn" onclick="setRating(3, this)">
+        <span class="rating-emoji">😐</span><span class="rating-num">3</span>
+      </button>
+      <button class="rating-btn" onclick="setRating(4, this)">
+        <span class="rating-emoji">🙂</span><span class="rating-num">4</span>
+      </button>
+      <button class="rating-btn" onclick="setRating(5, this)">
+        <span class="rating-emoji">🤩</span><span class="rating-num">5</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ВОПРОС 2: Подача материала (одиночный выбор) -->
+  <div class="step-container" id="step2">
+    <div class="question-title">Насколько понятной была подача материала?</div>
+    <div class="question-subtitle">Выбери один вариант</div>
+    <div class="options-list" id="clarityList">
+      <button class="option-card" onclick="setClarity('Всё понятно с первого раза', this)">🔥 Всё понятно с первого раза</button>
+      <button class="option-card" onclick="setClarity('Нормально, но пришлось пересматривать', this)">🤔 Нормально, но пришлось пересматривать</button>
+      <button class="option-card" onclick="setClarity('Слишком сложно, не хватило примеров', this)">🤯 Слишком сложно, не хватило примеров</button>
+      <button class="option-card" onclick="setClarity('Слишком просто, хочется глубже', this)">🥱 Слишком просто, хочется глубже</button>
+    </div>
+  </div>
+
+  <!-- ВОПРОС 3: Что понравилось больше всего (множественный выбор) -->
+  <div class="step-container" id="step3">
+    <div class="question-title">Что особенно зашло в обучении?</div>
+    <div class="question-subtitle">Можно выбрать несколько пунктов</div>
+    <div class="tags-wrap">
+      <button class="tag-pill" onclick="toggleTag('Практика и домашки', this)">🛠 Практика и домашки</button>
+      <button class="tag-pill" onclick="toggleTag('Подача спикера', this)">🎙 Подача спикера</button>
+      <button class="tag-pill" onclick="toggleTag('Работа кураторов', this)">💬 Работа кураторов</button>
+      <button class="tag-pill" onclick="toggleTag('Структура уроков', this)">📚 Структура уроков</button>
+      <button class="tag-pill" onclick="toggleTag('Доп. материалы и шаблоны', this)">🎁 Доп. материалы и шаблоны</button>
+      <button class="tag-pill" onclick="toggleTag('Ничего из этого', this)">❌ Ничего из этого</button>
+    </div>
+  </div>
+
+  <!-- ВОПРОС 4: Свободный комментарий -->
+  <div class="step-container" id="step4">
+    <div class="question-title">Есть ли пожелания или честный отзыв?</div>
+    <div class="question-subtitle">Напиши пару слов — это поможет нам стать лучше (необязательно)</div>
+    <textarea id="commentInput" placeholder="Например: хотелось бы больше разборов реальных кейсов..."></textarea>
+  </div>
+
+  <!-- Кнопки управления -->
+  <div class="nav-footer">
+    <button class="btn-back" id="backBtn" onclick="prevStep()" style="display: none;">Назад</button>
+    <button class="btn-next" id="nextBtn" onclick="nextStep()" disabled>Далее</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    // Хранилище ответов ученика
+    let answers = {
+      type: 'student_review',
+      rating: null,
+      clarity: null,
+      tags: [],
+      comment: ''
+    };
+
+    function updateUI() {
+      // Переключаем активный шаг
+      for (let i = 1; i <= totalSteps; i++) {
+        document.getElementById(`step${i}`).classList.toggle('active', i === currentStep);
+      }
+
+      // Обновляем прогресс-бар
+      const percent = (currentStep / totalSteps) * 100;
+      document.getElementById('stepText').innerText = `Вопрос ${currentStep} из ${totalSteps}`;
+      document.getElementById('stepPercent').innerText = `${percent}%`;
+      document.getElementById('progressFill').style.width = `${percent}%`;
+
+      // Кнопка "Назад"
+      document.getElementById('backBtn').style.display = currentStep > 1 ? 'block' : 'none';
+
+      // Текст и активность кнопки "Далее / Отправить"
+      const nextBtn = document.getElementById('nextBtn');
+      if (currentStep === totalSteps) {
+        nextBtn.innerText = 'Отправить отзыв';
+        nextBtn.disabled = false;
+      } else {
+        nextBtn.innerText = 'Далее';
+        nextBtn.disabled = !isStepValid();
+      }
+    }
+
+    function isStepValid() {
+      if (currentStep === 1) return answers.rating !== null;
+      if (currentStep === 2) return answers.clarity !== null;
+      if (currentStep === 3) return answers.tags.length > 0;
+      return true;
+    }
+
+    // Обработчики выборов
+    function setRating(val, btn) {
+      answers.rating = val;
+      document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      updateUI();
+    }
+
+    function setClarity(val, btn) {
+      answers.clarity = val;
+      document.querySelectorAll('#clarityList .option-card').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      updateUI();
+    }
+
+    function toggleTag(val, btn) {
+      if (answers.tags.includes(val)) {
+        answers.tags = answers.tags.filter(t => t !== val);
+        btn.classList.remove('selected');
+      } else {
+        answers.tags.push(val);
+        btn.classList.add('selected');
+      }
+      updateUI();
+    }
+
+    function nextStep() {
+      if (currentStep < totalSteps) {
+        currentStep++;
+        updateUI();
+      } else {
+        // Финальная отправка в Salebot
+        answers.comment = document.getElementById('commentInput').value.trim() || 'Без комментария';
+        answers.tags_text = answers.tags.join(', ');
+        tg.sendData(JSON.stringify(answers));
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        updateUI();
+      }
+    }
+
+    updateUI();
+  </script>
+</body>
+</html>
