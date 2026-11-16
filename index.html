@@ -132,13 +132,9 @@
 
 <script>
 /* =========================================================
-   1. НАСТРОЙКИ SALEBOT — заполните своё
+   1. НАСТРОЙКИ — адрес посредника (Cloudflare Worker)
    ========================================================= */
-const SALEBOT = {
-  apiKey:  "2fd2e5b55ab1422a4c2989cf4ecd08d8",          // Salebot → Настройки → API ключ
-  botName: "Happiness_as_system_payment_bot",      // username бота БЕЗ @ (это group_id)
-  trigger: "feedback_done"               // текст-триггер для блока в Salebot
-};
+const PROXY_URL = "https://salebot-feedback.services-057.workers.dev/";  // адрес Cloudflare Worker (ключ Salebot хранится там)
 const DEBUG = false;  // true — окно не закрывается и показывает, что ушло; после проверки поставьте false
 
 /* =========================================================
@@ -232,8 +228,8 @@ $("startBtn").onclick = () => { current = 0; renderQuestion(); };
 $("sendBtn").onclick = sendToSalebot;
 
 /* =========================================================
-   4. ОТПРАВКА ХУКА В SALEBOT
-   POST https://chatter.salebot.pro/api/<api_key>/tg_callback
+   4. ОТПРАВКА ОТВЕТОВ ПОСРЕДНИКУ
+   Посредник проверяет пользователя и сам отправляет хук в Salebot
    message  — текст, на который сработает блок в Salebot
    user_id  — Telegram ID пользователя
    group_id — username бота
@@ -255,7 +251,7 @@ async function sendToSalebot(){
     $("spinner").style.display = "none";
     $("doneTitle").textContent = "Нет Telegram ID";
     $("doneText").innerHTML =
-      "Пришлите скриншот этого экрана.<br><br>" +
+      "Откройте опрос через кнопку в боте.<br><br>" +
       "<small style='word-break:break-all'>" +
       "версия: v5<br>" +
       "telegram-web-app.js: " + (tg ? "загружен" : "НЕ загружен") + "<br>" +
@@ -266,37 +262,33 @@ async function sendToSalebot(){
     return;
   }
 
-  const params = new URLSearchParams({
-    message: SALEBOT.trigger,
-    user_id: String(user.id),
-    group_id: SALEBOT.botName,
+  const payload = {
+    initData: tg?.initData || "",   // подпись Telegram — посредник проверит, что это реальный пользователь
+    uid: urlUid || "",
     quiz_summary: summary,
-    comment: comment || "—",
+    comment,
     ...answers
-  });
-  const url = `https://chatter.salebot.pro/api/${SALEBOT.apiKey}/tg_callback?${params}`;
-  if (DEBUG) console.log("Salebot URL:", url);
+  };
 
   try{
-    // Отправка как загрузка картинки — то же самое, что открыть ссылку в браузере
-    await new Promise(resolve => {
-      const img = new Image();
-      img.onload = img.onerror = resolve;   // Salebot вернёт не картинку — это нормально
-      setTimeout(resolve, 4000);            // страховка, если ответ долгий
-      img.src = url + "&_t=" + Date.now();  // _t — чтобы запрос не брался из кэша
+    const res = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error("proxy " + res.status);
     $("spinner").style.display = "none";
     $("doneEmoji").style.display = "block";
     $("doneTitle").textContent = "Спасибо за отзыв!";
     $("doneText").textContent = DEBUG
-      ? `Отправлено. user_id: ${user.id}, бот: ${SALEBOT.botName}`
+      ? `Отправлено через посредника. user_id: ${user.id}`
       : "Ваши ответы получены. Окно закроется само.";
     tg?.HapticFeedback?.notificationOccurred?.("success");
     if (!DEBUG) setTimeout(()=>tg?.close(), 1800);
   }catch(e){
     $("spinner").style.display = "none";
     $("doneTitle").textContent = "Не удалось отправить";
-    $("doneText").textContent = "Проверьте интернет и нажмите «Отправить» ещё раз.";
+    $("doneText").textContent = (DEBUG ? "Ошибка: " + e.message : "Проверьте интернет и нажмите «Отправить отзыв» ещё раз.");
     $("sendBtn").disabled = false;
     setTimeout(renderReview, 1500);
   }
