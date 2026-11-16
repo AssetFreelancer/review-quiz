@@ -94,6 +94,7 @@
     <h1>Подберём подарок за 4 вопроса</h1>
     <p class="sub">Ответьте на несколько вопросов — и мы пришлём подборку прямо в этот чат.</p>
     <button class="btn" id="startBtn">Начать</button>
+    <p class="sub" style="text-align:center;margin:10px 0 0;font-size:12px">v3</p>
   </section>
 
   <!-- Вопрос (заполняется из JS) -->
@@ -130,6 +131,7 @@ const SALEBOT = {
   botName: "Happiness_as_system_payment_bot",      // username бота БЕЗ @ (это group_id)
   trigger: "quiz_done"               // текст-триггер для блока в Salebot
 };
+const DEBUG = true;  // true — окно не закрывается и показывает, что ушло; после проверки поставьте false
 
 /* =========================================================
    2. ВОПРОСЫ — меняйте текст, эмодзи и цвета как угодно
@@ -236,24 +238,39 @@ async function sendToSalebot(){
   const user = tg?.initDataUnsafe?.user;
   const summary = QUESTIONS.map(q=>`${q.title} — ${answers[q.key]}`).join("\n");
 
-  const body = new URLSearchParams({
+  if (!user?.id){
+    $("spinner").style.display = "none";
+    $("doneTitle").textContent = "Нет Telegram ID";
+    $("doneText").textContent = "Откройте квиз через кнопку «Web App» внутри бота, а не по обычной ссылке.";
+    return;
+  }
+
+  const params = new URLSearchParams({
     message: SALEBOT.trigger,
-    user_id: user?.id ?? "",
+    user_id: String(user.id),
     group_id: SALEBOT.botName,
     quiz_summary: summary,
     ...answers
   });
+  const url = `https://chatter.salebot.pro/api/${SALEBOT.apiKey}/tg_callback?${params}`;
+  if (DEBUG) console.log("Salebot URL:", url);
 
   try{
-    // no-cors: браузер не даст прочитать ответ, но запрос дойдёт до Salebot
-    await fetch(`https://chatter.salebot.pro/api/${SALEBOT.apiKey}/tg_callback`,
-                { method:"POST", mode:"no-cors", body });
+    // Отправка как загрузка картинки — то же самое, что открыть ссылку в браузере
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = resolve;   // Salebot вернёт не картинку — это нормально
+      setTimeout(resolve, 4000);            // страховка, если ответ долгий
+      img.src = url + "&_t=" + Date.now();  // _t — чтобы запрос не брался из кэша
+    });
     $("spinner").style.display = "none";
     $("doneEmoji").style.display = "block";
     $("doneTitle").textContent = "Готово!";
-    $("doneText").textContent = "Результат уже летит к вам в чат. Окно закроется само.";
+    $("doneText").textContent = DEBUG
+      ? `Отправлено. user_id: ${user.id}, бот: ${SALEBOT.botName}`
+      : "Результат уже летит к вам в чат. Окно закроется само.";
     tg?.HapticFeedback?.notificationOccurred?.("success");
-    setTimeout(()=>tg?.close(), 1800);
+    if (!DEBUG) setTimeout(()=>tg?.close(), 1800);
   }catch(e){
     $("spinner").style.display = "none";
     $("doneTitle").textContent = "Не удалось отправить";
