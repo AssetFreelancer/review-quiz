@@ -94,7 +94,7 @@
     <h1>Подберём подарок за 4 вопроса</h1>
     <p class="sub">Ответьте на несколько вопросов — и мы пришлём подборку прямо в этот чат.</p>
     <button class="btn" id="startBtn">Начать</button>
-    <p class="sub" style="text-align:center;margin:10px 0 0;font-size:12px">v3</p>
+    <p class="sub" style="text-align:center;margin:10px 0 0;font-size:12px">v5</p>
   </section>
 
   <!-- Вопрос (заполняется из JS) -->
@@ -235,13 +235,24 @@ async function sendToSalebot(){
   show("done");
   $("sendBtn").disabled = true;
 
-  const user = tg?.initDataUnsafe?.user;
+  // ID берём из Telegram, а если его нет — из ссылки (?uid=#{platform_id} из Salebot)
+  const urlUid = new URLSearchParams(location.search).get("uid");
+  const tgId = tg?.initDataUnsafe?.user?.id;
+  const user = (tgId || urlUid) ? { id: tgId || urlUid } : null;
   const summary = QUESTIONS.map(q=>`${q.title} — ${answers[q.key]}`).join("\n");
 
   if (!user?.id){
     $("spinner").style.display = "none";
     $("doneTitle").textContent = "Нет Telegram ID";
-    $("doneText").textContent = "Откройте квиз через кнопку «Web App» внутри бота, а не по обычной ссылке.";
+    $("doneText").innerHTML =
+      "Пришлите скриншот этого экрана.<br><br>" +
+      "<small style='word-break:break-all'>" +
+      "версия: v5<br>" +
+      "telegram-web-app.js: " + (tg ? "загружен" : "НЕ загружен") + "<br>" +
+      "платформа: " + (tg?.platform || "—") + "<br>" +
+      "initData: " + (tg?.initData ? tg.initData.length + " симв." : "пусто") + "<br>" +
+      "ссылка: " + location.href.replace(/tgWebAppData=[^&]*/,"tgWebAppData=…") +
+      "</small>";
     return;
   }
 
