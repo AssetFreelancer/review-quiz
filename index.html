@@ -338,27 +338,26 @@
           return;
         }
 
-        // Формируем тело запроса строго по документации /tg_callback
-        // Дополнительные поля в корне автоматически сохраняются в переменные клиента
-        const payload = {
-          message: 'student_review_done',
-          user_id: Number(tgUserId),
-          group_id: BOT_USERNAME,
-          resume_bot: true,
-          rev_rating: answers.rating,
-          rev_clarity: answers.clarity,
-          rev_tags: answers.tags_text,
-          rev_comment: answers.comment
-        };
+        // Формируем параметры в формате x-www-form-urlencoded
+        // Salebot гарантированно сохранит все дополнительные поля в переменные клиента
+        const formData = new URLSearchParams();
+        formData.append('message', 'student_review_done');
+        formData.append('user_id', Number(tgUserId));
+        formData.append('group_id', BOT_USERNAME);
+        formData.append('resume_bot', 'true');
+        formData.append('rev_rating', answers.rating);
+        formData.append('rev_clarity', answers.clarity);
+        formData.append('rev_tags', answers.tags_text);
+        formData.append('rev_comment', answers.comment);
 
         try {
           await fetch(`https://chatter.salebot.pro/api/${SALEBOT_API_KEY}/tg_callback`, {
             method: 'POST',
             mode: 'no-cors',
             headers: {
-              'Content-Type': 'text/plain'
+              'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
             },
-            body: JSON.stringify(payload)
+            body: formData.toString()
           });
 
           setTimeout(() => {
@@ -370,9 +369,6 @@
           nextBtn.disabled = false;
           nextBtn.innerText = 'Отправить отзыв';
         }
-      }
-    }
-
     function prevStep() {
       if (currentStep > 1) {
         currentStep--;
