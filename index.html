@@ -312,21 +312,19 @@
         answers.comment = document.getElementById('commentInput').value.trim() || 'Без комментария';
         answers.tags_text = answers.tags.join(', ');
 
-        // Определяем ID ученика
-        const clientId = getClientId();
+        const platformId = getClientId();
 
-        if (!clientId) {
-          alert('Ошибка: не удалось определить ваш Telegram ID. Откройте опрос через кнопку в боте.');
+        if (!platformId) {
+          alert('Ошибка: не найден ID пользователя');
           nextBtn.disabled = false;
           nextBtn.innerText = 'Отправить отзыв';
           return;
         }
 
-        // Формируем запрос в Salebot
+        // Передаем и хук, и переменные в одном запросе (без блокировки CORS)
         const payload = {
-          client_id: Number(clientId), // ID ученика в Telegram
-          group_id: 'tg',              // Канал: Telegram
-          message: 'student_review_done', // Хук для запуска блока
+          platform_id: Number(platformId),
+          message: 'student_review_done',
           variables: {
             rev_rating: answers.rating,
             rev_clarity: answers.clarity,
@@ -336,25 +334,27 @@
         };
 
         try {
-          const response = await fetch(`https://chatter.salebot.pro/api/${SALEBOT_API_KEY}/tg_callback`, {
+          await fetch(`https://chatter.salebot.pro/api/${SALEBOT_API_KEY}/tg_callback`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            mode: 'no-cors', // Отключаем блокировку CORS в Safari/Telegram
+            headers: {
+              'Content-Type': 'text/plain'
+            },
             body: JSON.stringify(payload)
           });
 
-          if (!response.ok) {
-            throw new Error('Ошибка ответа Salebot: ' + response.status);
-          }
+          // Делаем паузу полсекунды, чтобы запрос гарантированно ушел, и закрываем окно
+          setTimeout(() => {
+            tg.close();
+          }, 500);
 
-          tg.close();
         } catch (e) {
-          alert('Ошибка отправки: ' + e.message);
+          alert('Ошибка сети: ' + e.message);
           nextBtn.disabled = false;
           nextBtn.innerText = 'Отправить отзыв';
         }
       }
     }
-
     function prevStep() {
       if (currentStep > 1) {
         currentStep--;
