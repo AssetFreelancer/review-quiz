@@ -1,373 +1,267 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Отзыв об обучении</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    :root {
-      --bg-color: var(--tg-theme-bg-color, #18222d);
-      --secondary-bg: var(--tg-theme-secondary-bg-color, #22303f);
-      --text-color: var(--tg-theme-text-color, #ffffff);
-      --hint-color: var(--tg-theme-hint-color, #8fa1b3);
-      --accent: #3b82f6;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Квиз</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ===== Цвета: берутся из темы Telegram, если она есть ===== */
+  :root{
+    --bg: var(--tg-theme-bg-color, #f6f3fb);
+    --card: var(--tg-theme-secondary-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #1d1730);
+    --hint: var(--tg-theme-hint-color, #8a83a0);
+    --accent: var(--tg-theme-button-color, #6c3cf0);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --line: color-mix(in srgb, var(--text) 10%, transparent);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+  }
+  .app{max-width:520px;margin:0 auto;min-height:100%;padding:20px 18px 28px;display:flex;flex-direction:column}
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
+  /* Прогресс */
+  .progress{display:flex;gap:6px;margin-bottom:26px}
+  .progress span{flex:1;height:6px;border-radius:6px;background:var(--line);transition:background .35s}
+  .progress span.done{background:var(--accent)}
 
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      padding: 20px 16px;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
+  .screen{display:none;flex:1;flex-direction:column}
+  .screen.active{display:flex;animation:in .35s ease}
+  @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
-    .progress-header { margin-bottom: 24px; }
-    .step-indicator {
-      font-size: 13px;
-      color: var(--hint-color);
-      font-weight: 600;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .progress-track {
-      width: 100%;
-      height: 6px;
-      background: var(--secondary-bg);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      width: 25%;
-      background: var(--accent);
-      border-radius: 10px;
-      transition: width 0.3s ease;
-    }
+  .big-emoji{font-size:64px;line-height:1;margin:24px 0 18px}
+  h1,h2{font-family:"Unbounded","Golos Text",sans-serif;font-weight:700;letter-spacing:-.01em}
+  h1{font-size:26px;line-height:1.2;margin-bottom:12px}
+  h2{font-size:21px;line-height:1.25;margin-bottom:8px}
+  p.sub{color:var(--hint);font-size:15px;line-height:1.5;margin-bottom:22px}
+  .step{color:var(--hint);font-size:13px;margin-bottom:8px}
 
-    .step-container {
-      display: none;
-      flex-direction: column;
-      gap: 16px;
-      animation: fadeIn 0.25s ease;
-    }
-    .step-container.active { display: flex; }
+  /* ===== Кнопки-ответы ===== */
+  .options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .opt{
+    --c:#6c3cf0;               /* цвет варианта задаётся в JS */
+    position:relative;border:2px solid var(--line);background:var(--card);color:var(--text);
+    border-radius:20px;padding:18px 14px 16px;text-align:left;cursor:pointer;
+    font:500 15px/1.3 "Golos Text",sans-serif;min-height:118px;
+    display:flex;flex-direction:column;justify-content:space-between;gap:10px;
+    transition:transform .15s, background .3s, border-color .3s, color .3s, box-shadow .3s;
+  }
+  .opt:active{transform:scale(.97)}
+  .opt:focus-visible{outline:3px solid var(--c);outline-offset:2px}
+  .opt .ico{
+    width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:26px;
+    background:color-mix(in srgb, var(--c) 16%, transparent);transition:background .3s, transform .3s;
+  }
+  .opt .check{
+    position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;
+    border:2px solid var(--line);display:grid;place-items:center;font-size:13px;color:transparent;
+    transition:all .25s;
+  }
+  /* Выбранный вариант: заливка своим цветом + «прыжок» иконки */
+  .opt.selected{background:var(--c);border-color:var(--c);color:#fff;box-shadow:0 10px 24px -10px var(--c)}
+  .opt.selected .ico{background:rgba(255,255,255,.22);animation:pop .45s ease}
+  .opt.selected .check{background:#fff;border-color:#fff;color:var(--c)}
+  .opt.dim{opacity:.55}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.25) rotate(-8deg)}100%{transform:scale(1)}}
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .question-title { font-size: 22px; font-weight: 700; line-height: 1.3; }
-    .question-subtitle { font-size: 14px; color: var(--hint-color); margin-top: -8px; margin-bottom: 8px; }
-
-    .rating-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .rating-btn {
-      background: var(--secondary-bg);
-      border: 2px solid transparent;
-      border-radius: 14px;
-      padding: 14px 4px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      color: var(--text-color);
-      transition: 0.2s;
-    }
-    .rating-btn.selected { border-color: var(--accent); background: rgba(59, 130, 246, 0.15); }
-    .rating-emoji { font-size: 26px; }
-    .rating-num { font-size: 14px; font-weight: 700; }
-
-    .options-list { display: flex; flex-direction: column; gap: 10px; }
-    .option-card {
-      background: var(--secondary-bg);
-      border: 2px solid transparent;
-      border-radius: 14px;
-      padding: 14px 16px;
-      font-size: 15px;
-      font-weight: 500;
-      text-align: left;
-      color: var(--text-color);
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .option-card.selected { border-color: var(--accent); background: rgba(59, 130, 246, 0.15); font-weight: 600; }
-
-    .tags-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
-    .tag-pill {
-      background: var(--secondary-bg);
-      border: 2px solid transparent;
-      border-radius: 20px;
-      padding: 10px 16px;
-      font-size: 14px;
-      color: var(--text-color);
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .tag-pill.selected { border-color: var(--accent); background: rgba(59, 130, 246, 0.15); font-weight: 600; }
-
-    textarea {
-      width: 100%;
-      height: 130px;
-      background: var(--secondary-bg);
-      border: 2px solid transparent;
-      border-radius: 14px;
-      padding: 14px;
-      color: var(--text-color);
-      font-size: 15px;
-      resize: none;
-      outline: none;
-    }
-    textarea:focus { border-color: var(--accent); }
-
-    .nav-footer { margin-top: auto; padding-top: 20px; display: flex; gap: 10px; }
-    .btn-back {
-      background: var(--secondary-bg);
-      color: var(--text-color);
-      border: none;
-      border-radius: 14px;
-      padding: 0 18px;
-      height: 50px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-next {
-      flex: 1;
-      background: var(--accent);
-      color: #ffffff;
-      border: none;
-      border-radius: 14px;
-      height: 50px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
-  </style>
+  .btn{
+    margin-top:auto;border:0;border-radius:16px;padding:16px;width:100%;
+    background:var(--accent);color:var(--accent-text);font:600 16px "Golos Text",sans-serif;cursor:pointer;
+  }
+  .btn:disabled{opacity:.4}
+  .result-list{list-style:none;margin:6px 0 24px;display:grid;gap:10px}
+  .result-list li{background:var(--card);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4}
+  .result-list b{display:block;color:var(--hint);font-weight:500;font-size:12px;margin-bottom:2px}
+  .spinner{width:42px;height:42px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite;margin:40px 0 20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
+<div class="app">
+  <div class="progress" id="progress"></div>
 
-  <div class="progress-header">
-    <div class="step-indicator">
-      <span id="stepText">Вопрос 1 из 4</span>
-      <span id="stepPercent">25%</span>
-    </div>
-    <div class="progress-track">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
-  </div>
+  <!-- Старт -->
+  <section class="screen active" id="start">
+    <div class="big-emoji">🎁</div>
+    <h1>Подберём подарок за 4 вопроса</h1>
+    <p class="sub">Ответьте на несколько вопросов — и мы пришлём подборку прямо в этот чат.</p>
+    <button class="btn" id="startBtn">Начать</button>
+  </section>
 
-  <!-- ВОПРОС 1 -->
-  <div class="step-container active" id="step1">
-    <div class="question-title">Как тебе прошедший модуль / обучение?</div>
-    <div class="question-subtitle">Оцени по шкале от 1 до 5</div>
-    <div class="rating-grid">
-      <button type="button" class="rating-btn" onclick="setRating(1, this)"><span class="rating-emoji">😡</span><span class="rating-num">1</span></button>
-      <button type="button" class="rating-btn" onclick="setRating(2, this)"><span class="rating-emoji">😕</span><span class="rating-num">2</span></button>
-      <button type="button" class="rating-btn" onclick="setRating(3, this)"><span class="rating-emoji">😐</span><span class="rating-num">3</span></button>
-      <button type="button" class="rating-btn" onclick="setRating(4, this)"><span class="rating-emoji">🙂</span><span class="rating-num">4</span></button>
-      <button type="button" class="rating-btn" onclick="setRating(5, this)"><span class="rating-emoji">🤩</span><span class="rating-num">5</span></button>
-    </div>
-  </div>
+  <!-- Вопрос (заполняется из JS) -->
+  <section class="screen" id="question">
+    <div class="step" id="step"></div>
+    <h2 id="qTitle"></h2>
+    <p class="sub" id="qHint"></p>
+    <div class="options" id="options"></div>
+  </section>
 
-  <!-- ВОПРОС 2 -->
-  <div class="step-container" id="step2">
-    <div class="question-title">Насколько понятной была подача материала?</div>
-    <div class="question-subtitle">Выбери один вариант</div>
-    <div class="options-list" id="clarityList">
-      <button type="button" class="option-card" onclick="setClarity('Всё понятно с первого раза', this)">🔥 Всё понятно с первого раза</button>
-      <button type="button" class="option-card" onclick="setClarity('Нормально, но пришлось пересматривать', this)">🤔 Нормально, но пришлось пересматривать</button>
-      <button type="button" class="option-card" onclick="setClarity('Слишком сложно, не хватило примеров', this)">🤯 Слишком сложно, не хватило примеров</button>
-      <button type="button" class="option-card" onclick="setClarity('Слишком просто, хочется глубже', this)">🥱 Слишком просто, хочется глубже</button>
-    </div>
-  </div>
+  <!-- Проверка ответов -->
+  <section class="screen" id="review">
+    <h2>Проверьте ответы</h2>
+    <p class="sub">Нажмите «Отправить», и результат придёт в чат с ботом.</p>
+    <ul class="result-list" id="resultList"></ul>
+    <button class="btn" id="sendBtn">Отправить</button>
+  </section>
 
-  <!-- ВОПРОС 3 -->
-  <div class="step-container" id="step3">
-    <div class="question-title">Что особенно зашло в обучении?</div>
-    <div class="question-subtitle">Можно выбрать несколько пунктов</div>
-    <div class="tags-wrap">
-      <button type="button" class="tag-pill" onclick="toggleTag('Практика и домашки', this)">🛠 Практика и домашки</button>
-      <button type="button" class="tag-pill" onclick="toggleTag('Подача спикера', this)">🎙 Подача спикера</button>
-      <button type="button" class="tag-pill" onclick="toggleTag('Работа кураторов', this)">💬 Работа кураторов</button>
-      <button type="button" class="tag-pill" onclick="toggleTag('Структура уроков', this)">📚 Структура уроков</button>
-      <button type="button" class="tag-pill" onclick="toggleTag('Доп. материалы и шаблоны', this)">🎁 Доп. материалы и шаблоны</button>
-      <button type="button" class="tag-pill" onclick="toggleTag('Ничего из этого', this)">❌ Ничего из этого</button>
-    </div>
-  </div>
+  <!-- Отправка / готово -->
+  <section class="screen" id="done">
+    <div class="spinner" id="spinner"></div>
+    <div class="big-emoji" id="doneEmoji" style="display:none">✅</div>
+    <h2 id="doneTitle">Отправляем…</h2>
+    <p class="sub" id="doneText"></p>
+  </section>
+</div>
 
-  <!-- ВОПРОС 4 -->
-  <div class="step-container" id="step4">
-    <div class="question-title">Есть ли пожелания или честный отзыв?</div>
-    <div class="question-subtitle">Напиши пару слов — это поможет нам стать лучше (необязательно)</div>
-    <textarea id="commentInput" placeholder="Например: хотелось бы больше разборов реальных кейсов..."></textarea>
-  </div>
+<script>
+/* =========================================================
+   1. НАСТРОЙКИ SALEBOT — заполните своё
+   ========================================================= */
+const SALEBOT = {
+  apiKey:  "2fd2e5b55ab1422a4c2989cf4ecd08d8",          // Salebot → Настройки → API ключ
+  botName: "Happiness_as_system_payment_bot",      // username бота БЕЗ @ (это group_id)
+  trigger: "quiz_done"               // текст-триггер для блока в Salebot
+};
 
-  <div class="nav-footer">
-    <button type="button" class="btn-back" id="backBtn" onclick="prevStep()" style="display: none;">Назад</button>
-    <button type="button" class="btn-next" id="nextBtn" onclick="nextStep()" disabled>Далее</button>
-  </div>
+/* =========================================================
+   2. ВОПРОСЫ — меняйте текст, эмодзи и цвета как угодно
+   ========================================================= */
+const QUESTIONS = [
+  { key:"q1", title:"Для кого подарок?", hint:"Выберите один вариант",
+    options:[
+      {text:"Для мамы",   icon:"🌷", color:"#e2557a"},
+      {text:"Для мужа",   icon:"🧔", color:"#2f7de1"},
+      {text:"Для ребёнка",icon:"🧸", color:"#f0a020"},
+      {text:"Для друга",  icon:"🤝", color:"#18a874"} ]},
+  { key:"q2", title:"Какой повод?", hint:"Что празднуем",
+    options:[
+      {text:"День рождения", icon:"🎂", color:"#9b51e0"},
+      {text:"Свадьба",       icon:"💍", color:"#d9488f"},
+      {text:"Праздник",      icon:"🎉", color:"#f26b3a"},
+      {text:"Просто так",    icon:"💛", color:"#c9a40e"} ]},
+  { key:"q3", title:"Какой бюджет?", hint:"Примерно, в вашей валюте",
+    options:[
+      {text:"До 100",     icon:"🪙", color:"#5a8f29"},
+      {text:"100–300",    icon:"💵", color:"#1f9aa8"},
+      {text:"300–700",    icon:"💳", color:"#3d5ce6"},
+      {text:"Больше 700", icon:"💎", color:"#8a3ffc"} ]},
+  { key:"q4", title:"Что ему ближе?", hint:"Стиль подарка",
+    options:[
+      {text:"Практичное", icon:"🛠️", color:"#56606e"},
+      {text:"Красивое",   icon:"🌸", color:"#e05a9c"},
+      {text:"Вкусное",    icon:"🍫", color:"#a0522d"},
+      {text:"Впечатления",icon:"✈️", color:"#0f8fd6"} ]}
+];
 
-  <!-- Скрытый iframe для надежной POST-отправки без CORS-блокировок на iOS -->
-  <iframe name="hidden_salebot_frame" style="display:none;"></iframe>
+/* =========================================================
+   3. ЛОГИКА
+   ========================================================= */
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
 
-  <script>
-    const tg = window.Telegram ? window.Telegram.WebApp : null;
-    if (tg) {
-      tg.expand();
-    }
+const answers = {};
+let current = 0;
 
-    // === НАСТРОЙКИ SALEBOT ===
-    const SALEBOT_API_KEY = '2fd2e5b55ab1422a4c2989cf4ecd08d8';
-    const BOT_USERNAME = 'Happiness_as_system_payment_bot';
-    // =========================
+const $ = id => document.getElementById(id);
+const show = id => { document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); $(id).classList.add("active"); };
+const haptic = t => tg?.HapticFeedback?.selectionChanged?.() ;
 
-    let currentStep = 1;
-    const totalSteps = 4;
+// Полоса прогресса
+$("progress").innerHTML = QUESTIONS.map(()=>"<span></span>").join("");
+function paintProgress(){ [...$("progress").children].forEach((s,i)=>s.classList.toggle("done", i < Object.keys(answers).length)); }
 
-    let answers = {
-      rating: null,
-      clarity: null,
-      tags: [],
-      comment: ''
-    };
+function renderQuestion(){
+  const q = QUESTIONS[current];
+  $("step").textContent = `Вопрос ${current+1} из ${QUESTIONS.length}`;
+  $("qTitle").textContent = q.title;
+  $("qHint").textContent = q.hint;
+  $("options").innerHTML = "";
+  q.options.forEach(o=>{
+    const b = document.createElement("button");
+    b.className = "opt" + (answers[q.key]===o.text ? " selected" : "");
+    b.style.setProperty("--c", o.color);
+    b.innerHTML = `<span class="ico">${o.icon}</span><span>${o.text}</span><span class="check">✓</span>`;
+    b.onclick = () => choose(q, o, b);
+    $("options").appendChild(b);
+  });
+  show("question");
+  tg?.BackButton?.show();
+}
 
-    function updateUI() {
-      for (let i = 1; i <= totalSteps; i++) {
-        document.getElementById('step' + i).classList.toggle('active', i === currentStep);
-      }
+function choose(q, o, btn){
+  answers[q.key] = o.text;
+  haptic();
+  // меняем вид кнопок: выбранная — цветная, остальные приглушены
+  [...$("options").children].forEach(b=>{ b.classList.remove("selected"); b.classList.add("dim"); });
+  btn.classList.remove("dim"); btn.classList.add("selected");
+  paintProgress();
+  setTimeout(()=>{ current++; current < QUESTIONS.length ? renderQuestion() : renderReview(); }, 550);
+}
 
-      const percent = (currentStep / totalSteps) * 100;
-      document.getElementById('stepText').innerText = 'Вопрос ' + currentStep + ' из ' + totalSteps;
-      document.getElementById('stepPercent').innerText = percent + '%';
-      document.getElementById('progressFill').style.width = percent + '%';
+function renderReview(){
+  $("resultList").innerHTML = QUESTIONS.map(q=>`<li><b>${q.title}</b>${answers[q.key]}</li>`).join("");
+  show("review");
+}
 
-      document.getElementById('backBtn').style.display = currentStep > 1 ? 'block' : 'none';
+function goBack(){
+  if ($("review").classList.contains("active")) { current = QUESTIONS.length-1; renderQuestion(); return; }
+  if (current > 0){ current--; renderQuestion(); }
+  else { show("start"); tg?.BackButton?.hide(); }
+}
+tg?.BackButton?.onClick(goBack);
 
-      const nextBtn = document.getElementById('nextBtn');
-      if (currentStep === totalSteps) {
-        nextBtn.innerText = 'Отправить отзыв';
-        nextBtn.disabled = false;
-      } else {
-        nextBtn.innerText = 'Далее';
-        nextBtn.disabled = !isStepValid();
-      }
-    }
+$("startBtn").onclick = () => { current = 0; renderQuestion(); };
+$("sendBtn").onclick = sendToSalebot;
 
-    function isStepValid() {
-      if (currentStep === 1) return answers.rating !== null;
-      if (currentStep === 2) return answers.clarity !== null;
-      if (currentStep === 3) return answers.tags.length > 0;
-      return true;
-    }
+/* =========================================================
+   4. ОТПРАВКА ХУКА В SALEBOT
+   POST https://chatter.salebot.pro/api/<api_key>/tg_callback
+   message  — текст, на который сработает блок в Salebot
+   user_id  — Telegram ID пользователя
+   group_id — username бота
+   q1..q4   — ответы (дополнительные параметры)
+   ========================================================= */
+async function sendToSalebot(){
+  show("done");
+  $("sendBtn").disabled = true;
 
-    function setRating(val, btn) {
-      answers.rating = val;
-      document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      updateUI();
-    }
+  const user = tg?.initDataUnsafe?.user;
+  const summary = QUESTIONS.map(q=>`${q.title} — ${answers[q.key]}`).join("\n");
 
-    function setClarity(val, btn) {
-      answers.clarity = val;
-      document.querySelectorAll('#clarityList .option-card').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      updateUI();
-    }
+  const body = new URLSearchParams({
+    message: SALEBOT.trigger,
+    user_id: user?.id ?? "",
+    group_id: SALEBOT.botName,
+    quiz_summary: summary,
+    ...answers
+  });
 
-    function toggleTag(val, btn) {
-      if (answers.tags.includes(val)) {
-        answers.tags = answers.tags.filter(t => t !== val);
-        btn.classList.remove('selected');
-      } else {
-        answers.tags.push(val);
-        btn.classList.add('selected');
-      }
-      updateUI();
-    }
-
-    function getClientId() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlUserId = urlParams.get('user_id');
-      if (urlUserId && !urlUserId.includes('#')) {
-        return urlUserId;
-      }
-
-      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
-        return tg.initDataUnsafe.user.id;
-      }
-
-      if (tg && tg.initData) {
-        const initParams = new URLSearchParams(tg.initData);
-        const userStr = initParams.get('user');
-        if (userStr) {
-          try {
-            return JSON.parse(userStr).id;
-          } catch (e) {}
-        }
-      }
-
-      return null;
-    }
-
-// Склеиваем хук и все ответы в одну строку через разделитель |
-        const packedMessage = [
-          'student_review_done',
-          answers.rating,
-          answers.clarity,
-          answers.tags_text,
-          answers.comment.replace(/\|/g, '/') // убираем случайные | из комментария
-        ].join('|');
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'https://chatter.salebot.pro/api/' + SALEBOT_API_KEY + '/tg_callback';
-        form.target = 'hidden_salebot_frame';
-
-        const fields = {
-          message: packedMessage,
-          user_id: tgUserId,
-          group_id: BOT_USERNAME,
-          resume_bot: 'true'
-        };
-
-        for (const key in fields) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = fields[key];
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-
-        setTimeout(function() {
-          if (tg) {
-            tg.close();
-          }
-        }, 800);
-
-    function prevStep() {
-      if (currentStep > 1) {
-        currentStep--;
-        updateUI();
-      }
-    }
-
-    updateUI();
-  </script>
+  try{
+    // no-cors: браузер не даст прочитать ответ, но запрос дойдёт до Salebot
+    await fetch(`https://chatter.salebot.pro/api/${SALEBOT.apiKey}/tg_callback`,
+                { method:"POST", mode:"no-cors", body });
+    $("spinner").style.display = "none";
+    $("doneEmoji").style.display = "block";
+    $("doneTitle").textContent = "Готово!";
+    $("doneText").textContent = "Результат уже летит к вам в чат. Окно закроется само.";
+    tg?.HapticFeedback?.notificationOccurred?.("success");
+    setTimeout(()=>tg?.close(), 1800);
+  }catch(e){
+    $("spinner").style.display = "none";
+    $("doneTitle").textContent = "Не удалось отправить";
+    $("doneText").textContent = "Проверьте интернет и нажмите «Отправить» ещё раз.";
+    $("sendBtn").disabled = false;
+    setTimeout(renderReview, 1500);
+  }
+}
+</script>
 </body>
 </html>
