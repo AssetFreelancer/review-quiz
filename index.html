@@ -224,7 +224,7 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    // 1. ВСТАВЬТЕ СЮДА ВАШ ТЕСТОВЫЙ API-КЛЮЧ ИЗ SALEBOT:
+    // ВСТАВЬТЕ СЮДА ВАШ ТЕСТОВЫЙ API-КЛЮЧ ИЗ SALEBOT:
     const SALEBOT_API_KEY = '2fd2e5b55ab1422a4c2989cf4ecd08d8';
 
     let currentStep = 1;
@@ -291,13 +291,31 @@
       updateUI();
     }
 
-    // Функция получения ID пользователя (из Telegram или из ссылки ?user_id=...)
     function getClientId() {
+      // 1. Берем ID из ссылки (?user_id=...)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlUserId = urlParams.get('user_id');
+      if (urlUserId && !urlUserId.includes('#')) {
+        return urlUserId;
+      }
+
+      // 2. Берем из объекта Telegram WebApp
       if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
         return tg.initDataUnsafe.user.id;
       }
-      const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('user_id');
+
+      // 3. Запасной разбор из строки initData
+      if (tg.initData) {
+        const initParams = new URLSearchParams(tg.initData);
+        const userStr = initParams.get('user');
+        if (userStr) {
+          try {
+            return JSON.parse(userStr).id;
+          } catch (e) {}
+        }
+      }
+
+      return null;
     }
 
     async function nextStep() {
@@ -321,7 +339,6 @@
           return;
         }
 
-        // Передаем и хук, и переменные в одном запросе (без блокировки CORS)
         const payload = {
           platform_id: Number(platformId),
           message: 'student_review_done',
@@ -334,16 +351,15 @@
         };
 
         try {
-          await fetch(`https://chatter.salebot.pro/api/${SALEBOT_API_KEY}/tg_callback`, {
+          await fetch(`https://chatter.salebot.pro/api/${SALEBOT_API_KEY}/callback`, {
             method: 'POST',
-            mode: 'no-cors', // Отключаем блокировку CORS в Safari/Telegram
+            mode: 'no-cors',
             headers: {
               'Content-Type': 'text/plain'
             },
             body: JSON.stringify(payload)
           });
 
-          // Делаем паузу полсекунды, чтобы запрос гарантированно ушел, и закрываем окно
           setTimeout(() => {
             tg.close();
           }, 500);
@@ -355,6 +371,7 @@
         }
       }
     }
+
     function prevStep() {
       if (currentStep > 1) {
         currentStep--;
