@@ -322,42 +322,25 @@
       return null;
     }
 
-    function nextStep() {
-      if (currentStep < totalSteps) {
-        currentStep++;
-        updateUI();
-      } else {
-        const nextBtn = document.getElementById('nextBtn');
-        nextBtn.disabled = true;
-        nextBtn.innerText = 'Отправка...';
+// Склеиваем хук и все ответы в одну строку через разделитель |
+        const packedMessage = [
+          'student_review_done',
+          answers.rating,
+          answers.clarity,
+          answers.tags_text,
+          answers.comment.replace(/\|/g, '/') // убираем случайные | из комментария
+        ].join('|');
 
-        answers.comment = document.getElementById('commentInput').value.trim() || 'Без комментария';
-        answers.tags_text = answers.tags.join(', ');
-
-        const tgUserId = getClientId();
-
-        if (!tgUserId) {
-          alert('Ошибка: не найден ID пользователя');
-          nextBtn.disabled = false;
-          nextBtn.innerText = 'Отправить отзыв';
-          return;
-        }
-
-        // Создаем нативную POST-форму и отправляем её в скрытый iframe
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = 'https://chatter.salebot.pro/api/' + SALEBOT_API_KEY + '/tg_callback';
         form.target = 'hidden_salebot_frame';
 
         const fields = {
-          message: 'student_review_done',
+          message: packedMessage,
           user_id: tgUserId,
           group_id: BOT_USERNAME,
-          resume_bot: 'true',
-          rev_rating: answers.rating,
-          rev_clarity: answers.clarity,
-          rev_tags: answers.tags_text,
-          rev_comment: answers.comment
+          resume_bot: 'true'
         };
 
         for (const key in fields) {
@@ -371,14 +354,11 @@
         document.body.appendChild(form);
         form.submit();
 
-        // Даем браузеру 800 мс на отправку формы и закрываем Mini App
         setTimeout(function() {
           if (tg) {
             tg.close();
           }
         }, 800);
-      }
-    }
 
     function prevStep() {
       if (currentStep > 1) {
