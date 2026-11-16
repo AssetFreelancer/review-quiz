@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Квиз</title>
+<title>Отзыв о слёте ГИД</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
@@ -79,6 +79,13 @@
   .result-list{list-style:none;margin:6px 0 24px;display:grid;gap:10px}
   .result-list li{background:var(--card);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4}
   .result-list b{display:block;color:var(--hint);font-weight:500;font-size:12px;margin-bottom:2px}
+  .comment-label{font-size:14px;font-weight:600;margin-bottom:8px;display:block}
+  .comment-label span{color:var(--hint);font-weight:400}
+  textarea{
+    width:100%;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);
+    font:400 15px/1.4 "Golos Text",sans-serif;padding:12px 14px;resize:none;margin-bottom:20px;
+  }
+  textarea:focus{outline:none;border-color:var(--accent)}
   .spinner{width:42px;height:42px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite;margin:40px 0 20px}
   @keyframes spin{to{transform:rotate(360deg)}}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -90,11 +97,10 @@
 
   <!-- Старт -->
   <section class="screen active" id="start">
-    <div class="big-emoji">🎁</div>
-    <h1>Подберём подарок за 4 вопроса</h1>
-    <p class="sub">Ответьте на несколько вопросов — и мы пришлём подборку прямо в этот чат.</p>
-    <button class="btn" id="startBtn">Начать</button>
-    <p class="sub" style="text-align:center;margin:10px 0 0;font-size:12px">v5</p>
+    <div class="big-emoji">🏔️</div>
+    <h1>Как прошёл слёт ГИД в Алматы?</h1>
+    <p class="sub">4 коротких вопроса — меньше минуты. Ваши ответы помогут сделать следующий слёт ещё лучше.</p>
+    <button class="btn" id="startBtn">Оставить отзыв</button>
   </section>
 
   <!-- Вопрос (заполняется из JS) -->
@@ -107,10 +113,12 @@
 
   <!-- Проверка ответов -->
   <section class="screen" id="review">
-    <h2>Проверьте ответы</h2>
-    <p class="sub">Нажмите «Отправить», и результат придёт в чат с ботом.</p>
+    <h2>Почти готово</h2>
+    <p class="sub">Проверьте ответы и, если хотите, добавьте пару слов.</p>
     <ul class="result-list" id="resultList"></ul>
-    <button class="btn" id="sendBtn">Отправить</button>
+    <label class="comment-label" for="comment">Что нам улучшить в следующий раз? <span>(необязательно)</span></label>
+    <textarea id="comment" rows="3" maxlength="500" placeholder="Например: больше времени на общение"></textarea>
+    <button class="btn" id="sendBtn">Отправить отзыв</button>
   </section>
 
   <!-- Отправка / готово -->
@@ -129,38 +137,38 @@
 const SALEBOT = {
   apiKey:  "2fd2e5b55ab1422a4c2989cf4ecd08d8",          // Salebot → Настройки → API ключ
   botName: "Happiness_as_system_payment_bot",      // username бота БЕЗ @ (это group_id)
-  trigger: "quiz_done"               // текст-триггер для блока в Salebot
+  trigger: "feedback_done"               // текст-триггер для блока в Salebot
 };
-const DEBUG = true;  // true — окно не закрывается и показывает, что ушло; после проверки поставьте false
+const DEBUG = false;  // true — окно не закрывается и показывает, что ушло; после проверки поставьте false
 
 /* =========================================================
    2. ВОПРОСЫ — меняйте текст, эмодзи и цвета как угодно
    ========================================================= */
 const QUESTIONS = [
-  { key:"q1", title:"Для кого подарок?", hint:"Выберите один вариант",
+  { key:"q1", title:"Как вам слёт в целом?", hint:"Общее впечатление",
     options:[
-      {text:"Для мамы",   icon:"🌷", color:"#e2557a"},
-      {text:"Для мужа",   icon:"🧔", color:"#2f7de1"},
-      {text:"Для ребёнка",icon:"🧸", color:"#f0a020"},
-      {text:"Для друга",  icon:"🤝", color:"#18a874"} ]},
-  { key:"q2", title:"Какой повод?", hint:"Что празднуем",
+      {text:"Отлично",        icon:"🤩", color:"#18a874"},
+      {text:"Хорошо",         icon:"🙂", color:"#2f7de1"},
+      {text:"Нормально",      icon:"😐", color:"#d99a0b"},
+      {text:"Не понравилось", icon:"😕", color:"#e2557a"} ]},
+  { key:"q2", title:"Как оцените организацию?", hint:"Место, питание, расписание",
     options:[
-      {text:"День рождения", icon:"🎂", color:"#9b51e0"},
-      {text:"Свадьба",       icon:"💍", color:"#d9488f"},
-      {text:"Праздник",      icon:"🎉", color:"#f26b3a"},
-      {text:"Просто так",    icon:"💛", color:"#c9a40e"} ]},
-  { key:"q3", title:"Какой бюджет?", hint:"Примерно, в вашей валюте",
+      {text:"Всё на высоте",   icon:"🏆", color:"#c9900e"},
+      {text:"В целом хорошо",  icon:"👍", color:"#1f9aa8"},
+      {text:"Были накладки",   icon:"⚠️", color:"#f26b3a"},
+      {text:"Много проблем",   icon:"🛑", color:"#d23c3c"} ]},
+  { key:"q3", title:"Что было самым ценным?", hint:"Выберите главное",
     options:[
-      {text:"До 100",     icon:"🪙", color:"#5a8f29"},
-      {text:"100–300",    icon:"💵", color:"#1f9aa8"},
-      {text:"300–700",    icon:"💳", color:"#3d5ce6"},
-      {text:"Больше 700", icon:"💎", color:"#8a3ffc"} ]},
-  { key:"q4", title:"Что ему ближе?", hint:"Стиль подарка",
+      {text:"Выступления и лекции",  icon:"🎤", color:"#9b51e0"},
+      {text:"Общение и знакомства",  icon:"🤝", color:"#2f7de1"},
+      {text:"Практические занятия",  icon:"🧭", color:"#18a874"},
+      {text:"Атмосфера и горы",      icon:"🏔️", color:"#0f8fd6"} ]},
+  { key:"q4", title:"Приедете на следующий слёт?", hint:"Честно :)",
     options:[
-      {text:"Практичное", icon:"🛠️", color:"#56606e"},
-      {text:"Красивое",   icon:"🌸", color:"#e05a9c"},
-      {text:"Вкусное",    icon:"🍫", color:"#a0522d"},
-      {text:"Впечатления",icon:"✈️", color:"#0f8fd6"} ]}
+      {text:"Обязательно",   icon:"✅", color:"#18a874"},
+      {text:"Скорее да",     icon:"🙌", color:"#3d5ce6"},
+      {text:"Пока не знаю",  icon:"🤔", color:"#d99a0b"},
+      {text:"Скорее нет",    icon:"🙅", color:"#8a8f99"} ]}
 ];
 
 /* =========================================================
@@ -239,7 +247,9 @@ async function sendToSalebot(){
   const urlUid = new URLSearchParams(location.search).get("uid");
   const tgId = tg?.initDataUnsafe?.user?.id;
   const user = (tgId || urlUid) ? { id: tgId || urlUid } : null;
-  const summary = QUESTIONS.map(q=>`${q.title} — ${answers[q.key]}`).join("\n");
+  const comment = $("comment").value.trim();
+  const summary = QUESTIONS.map(q=>`${q.title} — ${answers[q.key]}`).join("\n")
+                + (comment ? `\nПожелания: ${comment}` : "");
 
   if (!user?.id){
     $("spinner").style.display = "none";
@@ -261,6 +271,7 @@ async function sendToSalebot(){
     user_id: String(user.id),
     group_id: SALEBOT.botName,
     quiz_summary: summary,
+    comment: comment || "—",
     ...answers
   });
   const url = `https://chatter.salebot.pro/api/${SALEBOT.apiKey}/tg_callback?${params}`;
@@ -276,10 +287,10 @@ async function sendToSalebot(){
     });
     $("spinner").style.display = "none";
     $("doneEmoji").style.display = "block";
-    $("doneTitle").textContent = "Готово!";
+    $("doneTitle").textContent = "Спасибо за отзыв!";
     $("doneText").textContent = DEBUG
       ? `Отправлено. user_id: ${user.id}, бот: ${SALEBOT.botName}`
-      : "Результат уже летит к вам в чат. Окно закроется само.";
+      : "Ваши ответы получены. Окно закроется само.";
     tg?.HapticFeedback?.notificationOccurred?.("success");
     if (!DEBUG) setTimeout(()=>tg?.close(), 1800);
   }catch(e){
