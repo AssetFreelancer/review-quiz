@@ -220,6 +220,9 @@
     <button type="button" class="btn-next" id="nextBtn" onclick="nextStep()" disabled>Далее</button>
   </div>
 
+  <!-- Скрытый iframe для надежной POST-отправки без CORS-блокировок на iOS -->
+  <iframe name="hidden_salebot_frame" style="display:none;"></iframe>
+
   <script>
     const tg = window.Telegram ? window.Telegram.WebApp : null;
     if (tg) {
@@ -319,7 +322,7 @@
       return null;
     }
 
-    async function nextStep() {
+    function nextStep() {
       if (currentStep < totalSteps) {
         currentStep++;
         updateUI();
@@ -340,39 +343,40 @@
           return;
         }
 
-        // Формируем данные в формате стандартной POST-формы (x-www-form-urlencoded)
-        // Salebot гарантированно запишет все дополнительные поля в переменные клиента
-        const formData = new URLSearchParams();
-        formData.append('message', 'student_review_done');
-        formData.append('user_id', Number(tgUserId));
-        formData.append('group_id', BOT_USERNAME);
-        formData.append('resume_bot', 'true');
-        formData.append('rev_rating', answers.rating);
-        formData.append('rev_clarity', answers.clarity);
-        formData.append('rev_tags', answers.tags_text);
-        formData.append('rev_comment', answers.comment);
+        // Создаем нативную POST-форму и отправляем её в скрытый iframe
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://chatter.salebot.pro/api/' + SALEBOT_API_KEY + '/tg_callback';
+        form.target = 'hidden_salebot_frame';
 
-        try {
-          await fetch('https://chatter.salebot.pro/api/' + SALEBOT_API_KEY + '/tg_callback', {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-            },
-            body: formData.toString()
-          });
+        const fields = {
+          message: 'student_review_done',
+          user_id: tgUserId,
+          group_id: BOT_USERNAME,
+          resume_bot: 'true',
+          rev_rating: answers.rating,
+          rev_clarity: answers.clarity,
+          rev_tags: answers.tags_text,
+          rev_comment: answers.comment
+        };
 
-          setTimeout(function() {
-            if (tg) {
-              tg.close();
-            }
-          }, 500);
-
-        } catch (e) {
-          alert('Ошибка сети: ' + e.message);
-          nextBtn.disabled = false;
-          nextBtn.innerText = 'Отправить отзыв';
+        for (const key in fields) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = fields[key];
+          form.appendChild(input);
         }
+
+        document.body.appendChild(form);
+        form.submit();
+
+        // Даем браузеру 800 мс на отправку формы и закрываем Mini App
+        setTimeout(function() {
+          if (tg) {
+            tg.close();
+          }
+        }, 800);
       }
     }
 
